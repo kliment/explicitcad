@@ -1,0 +1,13 @@
+<RCC>
+    <qresource prefix="/gl">
+        <file>mesh.frag</file>
+        <file>mesh.vert</file>
+        <file>mesh_wireframe.frag</file>
+        <file>quad.frag</file>
+        <file>quad.vert</file>
+        <file>sphere.stl</file>
+    </qresource>
+    <qresource prefix="/">
+        <file>testfile.stl</file>
+    </qresource>
+</RCC>
