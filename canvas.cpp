@@ -246,20 +246,21 @@ void Canvas::wheelEvent(QWheelEvent *event)
 {
     // Find GL position before the zoom operation
     // (to zoom about mouse cursor)
-    auto p = event->pos();
+    auto p = event->position();
     QVector3D v(1 - p.x() / (0.5*width()),
                 p.y() / (0.5*height()) - 1, 0);
     QVector3D a = transform_matrix().inverted() *
                   view_matrix().inverted() * v;
+    const auto angle = event->angleDelta().y();
 
-    if (event->delta() < 0)
+    if (angle < 0)
     {
-        for (int i=0; i > event->delta(); --i)
+        for (int i=0; i > angle; --i)
             zoom /= 1.001;
     }
-    else if (event->delta() > 0)
+    else if (angle > 0)
     {
-        for (int i=0; i < event->delta(); ++i)
+        for (int i=0; i < angle; ++i)
             zoom *= 1.001;
     }
 
