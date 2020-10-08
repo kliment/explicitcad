@@ -96,6 +96,23 @@ MainWindow::MainWindow()
 
     readSettings();
 
+    renderer.process.setProgram("extopenscad");
+
+    connect(&renderer.process, &QProcess::readyReadStandardError,
+            [=] { logError(renderer.process.readAllStandardError()); });
+    connect(&renderer.process, &QProcess::readyReadStandardOutput,
+            [=] { updateLog(renderer.process.readAllStandardOutput()); });
+    connect(&renderer.process,
+            QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
+            [=](int exitCode, QProcess::ExitStatus exitStatus) {
+              if (exitStatus == QProcess::NormalExit && exitCode == 0) {
+                load_stl(renderer.stl.fileName());
+                updateLog("Rendering done.");
+              } else {
+                logError("Rendering failed.");
+              }
+            });
+
     connect(textEdit, SIGNAL(textChanged()),
             this, SLOT(documentWasModified()));
 
@@ -178,36 +195,40 @@ void MainWindow::render(const QString exportname)
     on_render(exportname);
 }
 
-void MainWindow::on_render(const QString exportname, float res){
-    QString filename=exportname;
+void MainWindow::on_render(const QString exportname, float res)
+{
+    if (renderer.process.state() == QProcess::ProcessState::Running) {
+        updateLog("Renderer already running.");
+        return;
+    }
+
+    if (!renderer.stl.isOpen()) {
+        // this actually creates the temporary filename
+        renderer.stl.open();
+    }
+
     statusBar()->showMessage(tr("Everyday I'm rendering."));
 
-    if(exportname.isEmpty()){
-        filename=QDir::tempPath()+"/explicitcadtemp.stl";
-        QFile file(filename);
-        canvas->load_mesh(Loader::empty_mesh(),false);
-        file.remove();
-    }
-    QString tempfilename=QDir::tempPath()+"/explicitcadtemp.escad";
-    saveFile(tempfilename,false);
-    string commandstr="./extopenscad "+tempfilename.toStdString()+" -f stl -o "+filename.toStdString();
+    renderer.mode = exportname.isEmpty() ? Renderer::Mode::Preview : Renderer::Mode::Export;
+
+    const QString tempfilename = QDir::tempPath() + "/explicitcadtemp.escad";
+    saveFile(tempfilename, false);
+
+    auto args = QStringList{tempfilename, "-f", "stl", "-o", exportname.isEmpty() ? renderer.stl.fileName() : exportname};
     if(res>0){
-        commandstr="./extopenscad "+tempfilename.toStdString()+" -r"+
-                to_string(res)+
-                " -f stl -o "+filename.toStdString();
+        args.append("-r");
+        args.append(QString::number(res));
     }
-    TinyProcessLib::Process p(commandstr,"",[=](const char *bytes, size_t n){
-        newlogmsg(QString::fromUtf8(bytes,n));
-    });
-    auto exit_status = p.get_exit_status();
-    this_thread::sleep_for(chrono::seconds(1));
-    if(exit_status==0){
-        load_stl(filename);
-        updateLog("Done");
-        //load_stl(":testfile.stl");
-    }else{
-        updateLog("Error");
-    }
+
+    renderer.process.setArguments(args);
+    renderer.process.start();
+    renderer.process.waitForStarted();
+}
+
+void MainWindow::logError(const QString & text) {
+    outputcon->setTextColor(QColorConstants::Red);
+    updateLog(text);
+    outputcon->setTextColor(QColorConstants::Black);
 }
 
 void MainWindow::updateLog(const QString &text){
