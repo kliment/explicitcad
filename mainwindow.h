@@ -24,9 +24,9 @@
 
 #include <QMainWindow>
 #include "canvas.h"
+#include <QProcess>
 #include <QSplitter>
 #include <Qsci/qscilexer.h>
-#include <process.hpp>
 
 class QAction;
 class QMenu;
@@ -75,6 +75,7 @@ private slots:
     bool exportSTL();
     void render(const QString exportname="");
     void updateLog(const QString &text);
+    void logError(const QString &text);
 
 signals:
     void newlogmsg(const QString &text);
@@ -102,7 +103,14 @@ private:
     QString curFile;
     QTextEdit* outputcon;
     QFileSystemWatcher* watcher;
-    TinyProcessLib::Process* eosproc;
+
+    struct Renderer {
+        QProcess process;
+        QTemporaryFile stl;
+        enum Mode { Preview, Export } mode;
+    };
+
+    Renderer renderer;
 
     QMenu *fileMenu;
     QMenu *editMenu;
