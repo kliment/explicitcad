@@ -145,9 +145,15 @@ void MainWindow::newFile()
 void MainWindow::open()
 {
     if (maybeSave()) {
-        QString fileName = QFileDialog::getOpenFileName(this);
-        if (!fileName.isEmpty())
+        QSettings settings{"ImplicitCAD", "ExplicitCAD"};
+        const auto lastDir = settings.value("directory/open").toString();
+        QString fileName = QFileDialog::getOpenFileName(
+            this, tr("Open ImplicitCAD File"), lastDir);
+        if (!fileName.isEmpty()) {
+            settings.setValue("directory/open",
+                              QFileInfo(fileName).dir().absolutePath());
             loadFile(fileName);
+        }
     }
 }
 
@@ -353,6 +359,13 @@ void MainWindow::readSettings()
     QSettings settings("ImplicitCAD", "ExplicitCAD");
     QPoint pos = settings.value("pos", QPoint(200, 200)).toPoint();
     QSize size = settings.value("size", QSize(400, 400)).toSize();
+
+    if (!settings.contains("directory/open")) {
+        settings.setValue("directory/open",
+                          QStandardPaths::standardLocations(
+                              QStandardPaths::DocumentsLocation)[0]);
+    }
+
     resize(size);
     move(pos);
 }
