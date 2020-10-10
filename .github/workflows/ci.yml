@@ -1,0 +1,94 @@
+name: CI
+
+on: [push, pull_request, workflow_dispatch]
+
+env:
+  # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
+  BUILD_TYPE: Release
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [macos-latest, ubuntu-latest, windows-latest]
+        qt: ['5.9', '5.10.0', '5.11.3', '5.12.9', '5.13.2', '5.14.2', '5.15.1']
+    # The CMake configure and build commands are platform agnostic and should work equally
+    # well on Windows or Mac.  You can convert this to a matrix build if you need
+    # cross-platform coverage.
+    # See: https://docs.github.com/en/actions/configuring-and-managing-workflows/configuring-a-workflow#configuring-a-build-matrix
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    # Hotfix for fail on macOS until https://github.com/jurplel/install-qt-action/issues/60 is merged
+    - name: Hotfix for macOS
+      if: startsWith(runner.os, 'macOS')
+      run: |
+        python3 -m pip install setuptools wheel
+        python3 -m pip install py7zr aqtinstall
+
+    - name: Install Qt5
+      uses: jurplel/install-qt-action@v2
+      with:
+        version: ${{ matrix.qt }}
+
+    - name: Cache QScintilla build
+      id: cache-qscintilla-windows
+      if: startsWith(runner.os, 'Windows')
+      uses: actions/cache@v1
+      with:
+        path: C:/vcpkg/packages
+        key: ${{ runner.os }}-qscintilla
+
+    # Powershell uses non-Posix shell syntax
+    - name: Install QScintilla Windows
+      if: startsWith(runner.os, 'Windows') && steps.cache-qscintilla-windows.outputs.cache-hit != 'true'
+      run: |
+          vcpkg update
+          cd C:/vcpkg/ports; git pull
+          vcpkg install qscintilla:x64-windows
+
+    - name: Install QScintilla Unix
+      if: startsWith(runner.os, 'Linux') || startsWith(runner.os, 'macOS')
+      run: |
+        if [[ $RUNNER_OS == "macOS" ]]; then
+          brew install qscintilla2
+        elif [[ $RUNNER_OS == "Linux" ]]; then
+          sudo apt-get install libqscintilla2-qt5-dev
+        fi
+  
+    - uses: actions/checkout@v2
+
+    - name: Create Build Environment
+      run: cmake -E make_directory ${{runner.workspace}}/build
+
+    - name: Configure CMake
+      # Use a bash shell so we can use the same syntax for environment variable
+      # access regardless of the host operating system
+      shell: bash
+      working-directory: ${{runner.workspace}}/build
+      # Note the current convention is to use the -S and -B options here to specify source 
+      # and build directories, but this is only available with CMake 3.13 and higher.  
+      # The CMake binaries on the Github Actions machines are (as of this writing) 3.12
+      run: |
+        if [ "$RUNNER_OS" == "Linux" ]; then
+          export CMAKE_PREFIX_PATH=/usr/include/x86_64-linux-gnu/qt5
+        elif [ "$RUNNER_OS" == "Windows" ]; then
+          export CMAKE_PREFIX_PATH=C:/vcpkg/packages/qscintilla_x64-windows/
+        fi
+        cmake --debug-find $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE
+
+    - name: Build
+      working-directory: ${{runner.workspace}}/build
+      shell: bash
+      # Execute the build.  You can specify a specific target with "--target <NAME>"
+      run: cmake --build . --config $BUILD_TYPE
+
+#    - name: Test
+#      working-directory: ${{runner.workspace}}/build
+#      shell: bash
+      # Execute tests defined by the CMake configuration.  
+      # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
+#      run: ctest -C $BUILD_TYPE
+
+
+  
