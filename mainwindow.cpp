@@ -226,9 +226,9 @@ void MainWindow::on_render(const QString exportname, float res)
 }
 
 void MainWindow::logError(const QString & text) {
-    outputcon->setTextColor(QColorConstants::Red);
+    outputcon->setTextColor(Qt::red);
     updateLog(text);
-    outputcon->setTextColor(QColorConstants::Black);
+    outputcon->setTextColor(Qt::black);
 }
 
 void MainWindow::updateLog(const QString &text){
