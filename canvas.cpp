@@ -55,6 +55,19 @@ void Canvas::draw_wireframe()
     set_drawMode(1);
 }
 
+void Canvas::reset_cam()
+{
+    center = meshCenter;
+    scale = meshScale;
+
+    // Reset other camera parameters
+    zoom = 1;
+    yaw = 0;
+    tilt = 90;
+
+    update();
+}
+
 void Canvas::load_mesh(Mesh* m, bool is_reload)
 {
     mesh = new GLMesh(m);
@@ -63,13 +76,10 @@ void Canvas::load_mesh(Mesh* m, bool is_reload)
     {
         QVector3D lower(m->xmin(), m->ymin(), m->zmin());
         QVector3D upper(m->xmax(), m->ymax(), m->zmax());
-        center = (lower + upper) / 2;
-        scale = 2 / (upper - lower).length();
+        meshCenter = (lower + upper) / 2;
+        meshScale = 2 / (upper - lower).length();
 
-        // Reset other camera parameters
-        zoom = 1;
-        yaw = 0;
-        tilt = 90;
+        reset_cam();
     }
 
     update();

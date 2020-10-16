@@ -40,24 +40,17 @@
 #include <Qsci/qscilexercpp.h>
 
 #include "mainwindow.h"
-#include "canvas.h"
 #include "loader.h"
 #include "preferences.h"
+#include "viewwidget.h"
 
 #include <iostream>
 #include <string>
 
 using namespace std;
 
-MainWindow::MainWindow()
+MainWindow::MainWindow() : view(new ViewWidget(this))
 {
-    QSurfaceFormat format;
-    format.setDepthBufferSize(24);
-    format.setStencilBufferSize(8);
-    format.setVersion(2, 1);
-    format.setProfile(QSurfaceFormat::CoreProfile);
-
-    QSurfaceFormat::setDefaultFormat(format);
     textEdit = new QsciScintilla;
     textEdit->setWrapMode(QsciScintilla::WrapWord);
     textEdit->setWrapVisualFlags(QsciScintilla::WrapFlagByBorder);
@@ -72,11 +65,10 @@ MainWindow::MainWindow()
 
     outputcon=new QTextEdit(this);
 
-    canvas = new Canvas(format, this);
     splitter=new QSplitter(this);
     splitterR=new QSplitter(this);
     splitterR->setOrientation(Qt::Vertical);
-    splitterR->addWidget(canvas);
+    splitterR->addWidget(view);
     splitterR->addWidget(outputcon);
     splitterR->setSizes({200,200});
     splitter->addWidget(textEdit);
@@ -557,12 +549,12 @@ void MainWindow::on_reload()
 bool MainWindow::load_stl(const QString& filename, bool is_reload)
 {
 
-    canvas->set_status("Loading " + filename);
+    //canvas->set_status("Loading " + filename);
 
     Loader* loader = new Loader(this, filename, is_reload);
 
     connect(loader, &Loader::got_mesh,
-            canvas, &Canvas::load_mesh);
+            view, &ViewWidget::update_mesh);
     connect(loader, &Loader::error_bad_stl,
               this, &MainWindow::on_bad_stl);
     connect(loader, &Loader::error_empty_mesh,
@@ -576,8 +568,8 @@ bool MainWindow::load_stl(const QString& filename, bool is_reload)
             loader, &Loader::deleteLater);
     //connect(loader, &Loader::finished,
     //          this, &Window::enable_open);
-    connect(loader, &Loader::finished,
-            canvas, &Canvas::clear_status);
+    //connect(loader, &Loader::finished,
+    //        canvas, &Canvas::clear_status);
 
     if (filename[0] != ':')
     {

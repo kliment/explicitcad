@@ -26,6 +26,7 @@ public slots:
     void set_status(const QString& s);
     void clear_status();
     void load_mesh(Mesh* m, bool is_reload);
+    void reset_cam();
 
 protected:
 	void paintGL() override;
@@ -59,6 +60,8 @@ private:
     float zoom;
     float tilt;
     float yaw;
+    QVector3D meshCenter;
+    float meshScale;
 
     float perspective;
     int drawMode;
