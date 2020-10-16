@@ -6,8 +6,8 @@ CONFIG      += qscintilla2
 #    QMAKE_POST_LINK = install_name_tool -change libqscintilla2_qt$${QT_MAJOR_VERSION}.13.dylib $$[QT_INSTALL_LIBS]/libqscintilla2_qt$${QT_MAJOR_VERSION}.13.dylib $(TARGET)
 #}
 
-HEADERS      = mainwindow.h backdrop.h glmesh.h mesh.h canvas.h loader.h
-SOURCES      = main.cpp mainwindow.cpp backdrop.cpp glmesh.cpp mesh.cpp loader.cpp canvas.cpp
+HEADERS      = mainwindow.h backdrop.h glmesh.h mesh.h canvas.h loader.h preferences.h
+SOURCES      = main.cpp mainwindow.cpp backdrop.cpp glmesh.cpp mesh.cpp loader.cpp canvas.cpp preferences.cpp
 RESOURCES    = explicitcad.qrc
 RESOURCES += gl/gl.qrc
 

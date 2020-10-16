@@ -11,7 +11,7 @@ find_package(QScintilla REQUIRED)
 find_package(OpenGL REQUIRED)
 find_package(Threads REQUIRED)
 
-set(SRCS main.cpp mainwindow.cpp backdrop.cpp glmesh.cpp mesh.cpp loader.cpp canvas.cpp)
+set(SRCS main.cpp mainwindow.cpp backdrop.cpp glmesh.cpp mesh.cpp loader.cpp canvas.cpp preferences.cpp)
 set(RESOURCES explicitcad.qrc gl/gl.qrc)
 
 add_executable(explicitCAD ${SRCS} ${RESOURCES})

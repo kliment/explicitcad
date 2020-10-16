@@ -42,6 +42,7 @@
 #include "mainwindow.h"
 #include "canvas.h"
 #include "loader.h"
+#include "preferences.h"
 
 #include <iostream>
 #include <string>
@@ -86,6 +87,8 @@ MainWindow::MainWindow()
     outputcon->setAcceptRichText(true);
     outputcon->append("Program started");
     outputcon->append("What now?");
+
+    preferences = new Preferences(this);
 
     setCentralWidget(splitter);
 
@@ -173,6 +176,11 @@ bool MainWindow::saveAs()
         return false;
 
     return saveFile(fileName);
+}
+
+void MainWindow::openPreferences()
+{
+    preferences->show();
 }
 
 void MainWindow::about()
@@ -267,6 +275,11 @@ void MainWindow::createActions()
     exitAct->setStatusTip(tr("Exit the application"));
     connect(exitAct, SIGNAL(triggered()), this, SLOT(close()));
 
+    prefAct = new QAction(tr("Preferences"), this);
+    prefAct->setShortcut(tr("Ctrl+,"));
+    prefAct->setStatusTip(tr("Open Preference Dialog"));
+    connect(prefAct, SIGNAL(triggered()), this, SLOT(openPreferences()));
+
     cutAct = new QAction(QIcon(":/images/cut.png"), tr("Cu&t"), this);
     cutAct->setShortcut(tr("Ctrl+X"));
     cutAct->setStatusTip(tr("Cut the current selection's contents to the "
@@ -334,6 +347,10 @@ void MainWindow::createMenus()
     helpMenu = menuBar()->addMenu(tr("&Help"));
     helpMenu->addAction(aboutAct);
     helpMenu->addAction(aboutQtAct);
+
+    helpMenu->addSeparator();
+
+    helpMenu->addAction(prefAct);
 }
 
 void MainWindow::createToolBars()
