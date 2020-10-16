@@ -23,15 +23,17 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
-#include "canvas.h"
 #include <QProcess>
 #include <QSplitter>
 #include <Qsci/qscilexer.h>
+
+#include "canvas.h"
 
 class QAction;
 class QMenu;
 class QsciScintilla;
 class Preferences;
+class ViewWidget;
 
 class MainWindow : public QMainWindow
 {
@@ -99,7 +101,7 @@ private:
 
     QsciScintilla *textEdit;
     QsciLexer *lexer;
-    Canvas* canvas;
+    ViewWidget *view;
     QSplitter* splitter;
     QSplitter* splitterR;
     QString curFile;
