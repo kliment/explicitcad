@@ -31,6 +31,7 @@
 class QAction;
 class QMenu;
 class QsciScintilla;
+class Preferences;
 
 class MainWindow : public QMainWindow
 {
@@ -71,6 +72,7 @@ private slots:
     bool save();
     bool saveAs();
     void about();
+    void openPreferences();
     void documentWasModified();
     bool exportSTL();
     void render(const QString exportname="");
@@ -104,6 +106,8 @@ private:
     QTextEdit* outputcon;
     QFileSystemWatcher* watcher;
 
+    Preferences *preferences;
+
     struct Renderer {
         QProcess process;
         QTemporaryFile stl;
@@ -122,6 +126,7 @@ private:
     QAction *saveAct;
     QAction *saveAsAct;
     QAction *exitAct;
+    QAction *prefAct;
     QAction *cutAct;
     QAction *copyAct;
     QAction *pasteAct;
