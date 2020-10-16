@@ -109,7 +109,8 @@ MainWindow::MainWindow()
             QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
             [=](int exitCode, QProcess::ExitStatus exitStatus) {
               if (exitStatus == QProcess::NormalExit && exitCode == 0) {
-                load_stl(renderer.stl.fileName());
+                load_stl(renderer.stl.fileName(), renderer.reload);
+                renderer.reload = true;
                 updateLog("Rendering done.");
               } else {
                 logError("Rendering failed.");
@@ -142,6 +143,7 @@ void MainWindow::newFile()
     if (maybeSave()) {
         textEdit->clear();
         setCurrentFile("");
+        renderer.reload = false;
     }
 }
 
@@ -155,6 +157,7 @@ void MainWindow::open()
         if (!fileName.isEmpty()) {
             settings.setValue("directory/open",
                               QFileInfo(fileName).dir().absolutePath());
+            renderer.reload = false;
             loadFile(fileName);
         }
     }
@@ -228,7 +231,9 @@ void MainWindow::on_render(const QString exportname, float res)
     const QString tempfilename = QDir::tempPath() + "/explicitcadtemp.escad";
     saveFile(tempfilename, false);
 
-    auto args = QStringList{tempfilename, "-f", "stl", "-o", exportname.isEmpty() ? renderer.stl.fileName() : exportname};
+    auto args = QStringList{tempfilename, "-f", "stl", "-o",
+                            exportname.isEmpty() ? renderer.stl.fileName()
+                                                 : exportname};
     if(res>0){
         args.append("-r");
         args.append(QString::number(res));
@@ -447,8 +452,15 @@ bool MainWindow::saveFile(const QString &fileName, bool setname)
     out << textEdit->text();
     QApplication::restoreOverrideCursor();
 
-    if(setname)setCurrentFile(fileName);
+    if (setname) {
+        setCurrentFile(fileName);
+        QSettings settings("ImplicitCAD", "ExplicitCAD");
+        if (settings.value("autorender", false).toBool()) {
+            render();
+        }
+    }
     statusBar()->showMessage(tr("File saved"), 2000);
+
     return true;
 }
 

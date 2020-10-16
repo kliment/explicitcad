@@ -112,6 +112,7 @@ private:
         QProcess process;
         QTemporaryFile stl;
         enum Mode { Preview, Export } mode;
+        bool reload = false;
     };
 
     Renderer renderer;
