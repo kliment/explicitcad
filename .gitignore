@@ -1,6 +1,5 @@
 build
 *.sw?
-*.s
 Makefile
 .qmake.stash
 *.o
