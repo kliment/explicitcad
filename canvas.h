@@ -22,11 +22,14 @@ public:
     void draw_shaded();
     void draw_wireframe();
 
+    enum class Direction { Front, Back, Top, Bottom, Left, Right };
+
 public slots:
     void set_status(const QString& s);
     void clear_status();
     void load_mesh(Mesh* m, bool is_reload);
     void reset_cam();
+    void setCameraAngle(const enum Direction direction);
 
 protected:
 	void paintGL() override;

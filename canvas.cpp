@@ -62,8 +62,37 @@ void Canvas::reset_cam()
 
     // Reset other camera parameters
     zoom = 1;
-    yaw = 0;
-    tilt = 90;
+    setCameraAngle(Direction::Front);
+}
+
+void Canvas::setCameraAngle(const enum Direction direction)
+{
+    switch (direction) {
+    case Direction::Front:
+        yaw = 0;
+        tilt = 90;
+        break;
+    case Direction::Back:
+        yaw = 180;
+        tilt = 90;
+        break;
+    case Direction::Top:
+        yaw = 0;
+        tilt = 0;
+        break;
+    case Direction::Bottom:
+        yaw = 0;
+        tilt = 180;
+        break;
+    case Direction::Left:
+        yaw = -90;
+        tilt = 90;
+        break;
+    case Direction::Right:
+        yaw = 90;
+        tilt = 90;
+        break;
+    }
 
     update();
 }
