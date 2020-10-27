@@ -3,6 +3,7 @@
 , mkDerivation
 , fetchFromGitHub
 , qmake
+, qtbase
 , qscintilla
 , haskellPackages }:
 
@@ -19,6 +20,7 @@ mkDerivation rec {
   #};
 
   buildInputs = [
+    qtbase
     (qscintilla.override { withQt5 = true; })
   ];
 
@@ -27,9 +29,9 @@ mkDerivation rec {
   qtWrapperArgs =
     [ "--prefix" "PATH" ":" (lib.makeBinPath [ haskellPackages.implicit ] ) ];
 
-  installPhase = ''
-    install -d $out/bin
-    install -m755 explicitcad $out/bin/
+  preFixup = lib.optionalString stdenv.hostPlatform.isDarwin ''
+    # wrapQtAppsHook is broken for macOS 😂 - do it manually
+    wrapQtApp $out/bin/explicitcad.app/Contents/MacOS/explicitcad
   '';
 
   meta = with stdenv.lib; {
@@ -37,6 +39,7 @@ mkDerivation rec {
     homepage = "https://github.com/kliment/explicitcad";
     license = licenses.gpl3;
     maintainers = [ maintainers.sorki ];
-    platforms = platforms.linux;
+    platforms = platforms.unix;
+    broken = builtins.compareVersions qtbase.version "5.9.0" < 0;
   };
 }
