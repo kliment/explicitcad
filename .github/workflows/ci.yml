@@ -39,21 +39,18 @@ jobs:
         path: C:/vcpkg/packages
         key: ${{ runner.os }}-qscintilla
 
-    # Powershell uses non-Posix shell syntax
-    - name: Install QScintilla Windows
-      if: startsWith(runner.os, 'Windows') && steps.cache-qscintilla-windows.outputs.cache-hit != 'true'
-      run: |
-          vcpkg update
-          cd C:/vcpkg/ports; git pull
-          vcpkg install qscintilla:x64-windows
-
-    - name: Install QScintilla Unix
-      if: startsWith(runner.os, 'Linux') || startsWith(runner.os, 'macOS')
+    - name: Install QScintilla
+      shell: bash
+      #if: (!startsWith(runner.os, 'Windows')) || steps.cache-qscintilla-windows.outputs.cache-hit == 'false'
       run: |
         if [[ $RUNNER_OS == "macOS" ]]; then
           brew install qscintilla2
         elif [[ $RUNNER_OS == "Linux" ]]; then
           sudo apt-get install libqscintilla2-qt5-dev
+        elif [[ $RUNNER_OS == "Windows" ]]; then
+          vcpkg update
+          cd C:/vcpkg/ports; git pull
+          vcpkg install qscintilla:x64-windows
         fi
   
     - uses: actions/checkout@v2
