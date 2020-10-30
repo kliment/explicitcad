@@ -23,101 +23,51 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
-#include <QProcess>
-#include <QSplitter>
-#include <Qsci/qscilexer.h>
-
-#include "canvas.h"
 
 class QAction;
 class QMenu;
-class QsciScintilla;
+class QTabWidget;
 class Preferences;
-class ViewWidget;
+class Tab;
 
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
 
-public:
+  public:
     MainWindow();
-    bool load_stl(const QString& filename, bool is_reload=false);
-public slots:
-    //void on_open();
-    //void on_about();
-    void on_bad_stl();
-    void on_empty_mesh();
-    void on_missing_file();
-    void on_confusing_stl();
 
-    //void enable_open();
-    //void disable_open();
-
-    void set_watched(const QString& filename);
-
-private slots:
-    //void on_projection(QAction* proj);
-    //void on_drawMode(QAction* mode);
-    void on_watched_change(const QString& filename);
-    void on_reload();
-    void on_autoreload_triggered(bool r);
-    ///void on_clear_recent();
-    //void on_load_recent(QAction* a);
-    //void on_loaded(const QString& filename);
-
-protected:
+  protected:
     void closeEvent(QCloseEvent *event);
 
-private slots:
+  private slots:
     void newFile();
     void open();
-    bool save();
+    bool save(Tab *const tab);
     bool saveAs();
     void about();
-    void openPreferences();
     void documentWasModified();
     bool exportSTL();
-    void render(const QString exportname="");
-    void updateLog(const QString &text);
-    void logError(const QString &text);
+    bool closeTab(Tab *const);
 
-signals:
-    void newlogmsg(const QString &text);
+  private:
+    Tab *currentTab() const;
+    Tab *getTab(const int idx) const;
 
-private:
+    void setWindowTitle(Tab const *const tab);
+    void setTabText(Tab *const tab, const QString &filename);
+
     void createActions();
     void createMenus();
     void createToolBars();
     void createStatusBar();
     void readSettings();
     void writeSettings();
-    bool maybeSave();
-    void loadFile(const QString &fileName);
-    bool saveFile(const QString &fileName, bool setname=true);
-    void setCurrentFile(const QString &fileName);
-    void on_render(const QString exportname="", float res=0);
+    bool maybeSave(Tab *const);
 
-    QString strippedName(const QString &fullFileName);
-
-    QsciScintilla *textEdit;
-    QsciLexer *lexer;
-    ViewWidget *view;
-    QSplitter* splitter;
-    QSplitter* splitterR;
-    QString curFile;
-    QTextEdit* outputcon;
-    QFileSystemWatcher* watcher;
+    QTabWidget *main;
 
     Preferences *preferences;
-
-    struct Renderer {
-        QProcess process;
-        QTemporaryFile stl;
-        enum Mode { Preview, Export } mode;
-        bool reload = false;
-    };
-
-    Renderer renderer;
 
     QMenu *fileMenu;
     QMenu *editMenu;
@@ -128,6 +78,7 @@ private:
     QAction *openAct;
     QAction *saveAct;
     QAction *saveAsAct;
+    QAction *closeTabAct;
     QAction *exitAct;
     QAction *prefAct;
     QAction *cutAct;
@@ -137,7 +88,6 @@ private:
     QAction *aboutQtAct;
     QAction *renderAct;
     QAction *exportAct;
-
 };
 
 #endif

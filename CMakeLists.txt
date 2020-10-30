@@ -11,7 +11,7 @@ find_package(QScintilla REQUIRED)
 find_package(OpenGL REQUIRED)
 find_package(Threads REQUIRED)
 
-set(SRCS main.cpp mainwindow.cpp backdrop.cpp glmesh.cpp mesh.cpp loader.cpp canvas.cpp preferences.cpp viewwidget.cpp)
+set(SRCS main.cpp mainwindow.cpp backdrop.cpp glmesh.cpp mesh.cpp loader.cpp canvas.cpp preferences.cpp viewwidget.cpp tab.cpp)
 set(RESOURCES explicitcad.qrc gl/gl.qrc)
 
 add_executable(${PROJECT_NAME} MACOSX_BUNDLE ${SRCS} ${RESOURCES})
@@ -21,4 +21,3 @@ install(TARGETS ${PROJECT_NAME}
   RUNTIME DESTINATION . COMPONENT Runtime
   BUNDLE DESTINATION . COMPONENT Runtime
 )
-

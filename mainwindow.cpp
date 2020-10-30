@@ -23,8 +23,8 @@
 #include <QApplication>
 #include <QCloseEvent>
 #include <QFile>
-#include <QFileInfo>
 #include <QFileDialog>
+#include <QFileInfo>
 #include <QIcon>
 #include <QMenu>
 #include <QMenuBar>
@@ -32,116 +32,126 @@
 #include <QPoint>
 #include <QSettings>
 #include <QSize>
+#include <QStandardPaths>
 #include <QStatusBar>
+#include <QTabWidget>
 #include <QTextStream>
 #include <QToolBar>
 
-#include <Qsci/qsciscintilla.h>
-#include <Qsci/qscilexercpp.h>
-
 #include "mainwindow.h"
-#include "loader.h"
 #include "preferences.h"
-#include "viewwidget.h"
+#include "tab.h"
 
-#include <iostream>
-#include <string>
-
-using namespace std;
-
-MainWindow::MainWindow() : view(new ViewWidget(this))
+static QString filename(const QString &fullFileName)
 {
-    textEdit = new QsciScintilla;
-    textEdit->setWrapMode(QsciScintilla::WrapWord);
-    textEdit->setWrapVisualFlags(QsciScintilla::WrapFlagByBorder);
-    textEdit->setIndentationsUseTabs(false);
-    textEdit->setTabWidth(2);
-    textEdit->setIndentationGuides(true);
-    textEdit->setAutoIndent(true);
-    textEdit->setCaretLineVisible(true);
-    textEdit->setMarginType(1,QsciScintilla::NumberMargin);
-    lexer=new QsciLexerCPP();
-    textEdit->setLexer(lexer);
+    return QFileInfo(fullFileName).fileName();
+}
 
-    outputcon=new QTextEdit(this);
+static const char *untitled = "untitled.escad";
 
-    splitter=new QSplitter(this);
-    splitterR=new QSplitter(this);
-    splitterR->setOrientation(Qt::Vertical);
-    splitterR->addWidget(view);
-    splitterR->addWidget(outputcon);
-    splitterR->setSizes({200,200});
-    splitter->addWidget(textEdit);
-    splitter->addWidget(splitterR);
-    splitter->setSizes({200,200});
-    textEdit->setFocus();
-    outputcon->setReadOnly(true);
-    outputcon->setAcceptRichText(true);
-    outputcon->append("Program started");
-    outputcon->append("What now?");
-
-    preferences = new Preferences(this);
-
-    setCentralWidget(splitter);
+MainWindow::MainWindow()
+    : main(new QTabWidget(this)), preferences(new Preferences(this))
+{
+    setCentralWidget(main);
+    readSettings();
+    //main->setDocumentMode(true);
+    main->setTabsClosable(true);
+    main->setMovable(true);
+    newFile();
 
     createActions();
     createMenus();
     createToolBars();
+
     createStatusBar();
 
-    readSettings();
+    connect(main, &QTabWidget::tabCloseRequested,
+            [=](const int idx) { closeTab(getTab(idx)); });
 
-    renderer.process.setProgram("extopenscad");
+    /* update UI on tab change */
+    connect(main, &QTabWidget::currentChanged, [=](const int idx) {
+        if (idx < 0) {
+            return;
+        }
 
-    connect(&renderer.process, &QProcess::readyReadStandardError,
-            [=] { logError(renderer.process.readAllStandardError()); });
-    connect(&renderer.process, &QProcess::readyReadStandardOutput,
-            [=] { updateLog(renderer.process.readAllStandardOutput()); });
-    connect(&renderer.process,
-            QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
-            [=](int exitCode, QProcess::ExitStatus exitStatus) {
-              if (exitStatus == QProcess::NormalExit && exitCode == 0) {
-                load_stl(renderer.stl.fileName(), renderer.reload);
-                renderer.reload = true;
-                updateLog("Rendering done.");
-              } else {
-                logError("Rendering failed.");
-              }
-            });
+        Tab const *const tab = getTab(idx);
+        setWindowTitle(tab);
+        const bool available = tab->hasSelectedCode();
+        cutAct->setEnabled(available);
+        copyAct->setEnabled(available);
 
-    connect(textEdit, SIGNAL(textChanged()),
-            this, SLOT(documentWasModified()));
+    });
+}
 
-    connect(this, SIGNAL(newlogmsg(QString)), this, SLOT(updateLog(QString)));
+Tab *MainWindow::currentTab() const
+{
+    return dynamic_cast<Tab *>(main->currentWidget());
+}
 
-    //load_stl(":testfile.stl");
-    //load_stl("/home/kliment/designs/implicitcad/ImplicitCAD/testfile.stl");
+Tab *MainWindow::getTab(const int idx) const
+{
+    return dynamic_cast<Tab *>(main->widget(idx));
+}
 
-    setCurrentFile("");
+void MainWindow::setWindowTitle(Tab const *const tab)
+{
+    QString shownName{filename(tab->fileName())};
+    if (shownName.isEmpty())
+        shownName = untitled;
+
+    static_cast<QMainWindow *>(this)->setWindowTitle(
+        tr("%1[*] - %2").arg(shownName).arg(tr("Application")));
+    setWindowModified(tab->hasModifiedCode());
+}
+
+void MainWindow::setTabText(Tab *const tab, const QString &filename)
+{
+    main->setTabText(main->indexOf(tab), filename);
 }
 
 void MainWindow::closeEvent(QCloseEvent *event)
 {
-    if (maybeSave()) {
-        writeSettings();
-        event->accept();
-    } else {
-        event->ignore();
+    writeSettings();
+    for (; main->count();) {
+        const auto tab = currentTab();
+        if (!closeTab(tab)) {
+            event->ignore();
+            return;
+        }
     }
+    event->accept();
+}
+
+bool MainWindow::closeTab(Tab *const tab)
+{
+    const int idx = main->indexOf(tab);
+    if (maybeSave(tab) && idx != -1) {
+        main->removeTab(idx);
+        delete tab;
+        return true;
+    }
+
+    return false;
 }
 
 void MainWindow::newFile()
 {
-    if (maybeSave()) {
-        textEdit->clear();
-        setCurrentFile("");
-        renderer.reload = false;
-    }
+    Tab *tab = new Tab();
+    const int idx = main->addTab(tab, untitled);
+    main->setCurrentIndex(idx);
+    tab->setFocus();
+    setWindowTitle(tab);
+
+    connect(tab, &Tab::copyAvailable, [=](const bool available) {
+        cutAct->setEnabled(available);
+        copyAct->setEnabled(available);
+    });
 }
 
 void MainWindow::open()
 {
-    if (maybeSave()) {
+    const auto tab = currentTab();
+    if (maybeSave(tab)) {
         QSettings settings{"ImplicitCAD", "ExplicitCAD"};
         const auto lastDir = settings.value("directory/open").toString();
         QString fileName = QFileDialog::getOpenFileName(
@@ -149,19 +159,30 @@ void MainWindow::open()
         if (!fileName.isEmpty()) {
             settings.setValue("directory/open",
                               QFileInfo(fileName).dir().absolutePath());
-            renderer.reload = false;
-            loadFile(fileName);
+            const bool success = tab->open(fileName);
+            if (success) {
+                setWindowTitle(tab);
+                setTabText(tab, filename(fileName));
+            }
         }
     }
 }
 
-bool MainWindow::save()
+bool MainWindow::maybeSave(Tab *const tab)
 {
-    if (curFile.isEmpty()) {
-        return saveAs();
-    } else {
-        return saveFile(curFile);
+    if (tab && tab->hasModifiedCode()) {
+        const int ret = QMessageBox::warning(
+            this, tr("Application"),
+            tr("The document has been modified.\n"
+               "Do you want to save your changes?"),
+            QMessageBox::Yes | QMessageBox::Default, QMessageBox::No,
+            QMessageBox::Cancel | QMessageBox::Escape);
+        if (ret == QMessageBox::Yes)
+            return save(tab);
+        else if (ret == QMessageBox::Cancel)
+            return false;
     }
+    return true;
 }
 
 bool MainWindow::saveAs()
@@ -170,12 +191,29 @@ bool MainWindow::saveAs()
     if (fileName.isEmpty())
         return false;
 
-    return saveFile(fileName);
+    const auto tab = currentTab();
+    tab->setFileName(fileName);
+
+    save(tab);
+    return true;
 }
 
-void MainWindow::openPreferences()
+bool MainWindow::save(Tab *const tab)
 {
-    preferences->show();
+    if (!tab->hasFile()) {
+        QString fileName = QFileDialog::getSaveFileName(this);
+        if (fileName.isEmpty())
+            return false;
+        tab->setFileName(fileName);
+    }
+
+    const bool success = tab->save();
+    if (success) {
+        statusBar()->showMessage(tr("File saved"), 2000);
+        setWindowTitle(tab);
+        setTabText(tab, filename(tab->fileName()));
+    }
+    return success;
 }
 
 void MainWindow::about()
@@ -188,62 +226,16 @@ void MainWindow::about()
 
 void MainWindow::documentWasModified()
 {
-    setWindowModified(textEdit->isModified());
+    setWindowModified(true);
 }
 
-bool MainWindow::exportSTL(){
+bool MainWindow::exportSTL()
+{
     QString fileName = QFileDialog::getSaveFileName(this);
     if (fileName.isEmpty())
         return false;
-    on_render(fileName,0.5);
+    currentTab()->render(fileName, 0.5);
     return true;
-}
-
-void MainWindow::render(const QString exportname)
-{
-    on_render(exportname);
-}
-
-void MainWindow::on_render(const QString exportname, float res)
-{
-    if (renderer.process.state() == QProcess::ProcessState::Running) {
-        updateLog("Renderer already running.");
-        return;
-    }
-
-    if (!renderer.stl.isOpen()) {
-        // this actually creates the temporary filename
-        renderer.stl.open();
-    }
-
-    statusBar()->showMessage(tr("Everyday I'm rendering."));
-
-    renderer.mode = exportname.isEmpty() ? Renderer::Mode::Preview : Renderer::Mode::Export;
-
-    const QString tempfilename = QDir::tempPath() + "/explicitcadtemp.escad";
-    saveFile(tempfilename, false);
-
-    auto args = QStringList{tempfilename, "-f", "stl", "-o",
-                            exportname.isEmpty() ? renderer.stl.fileName()
-                                                 : exportname};
-    if(res>0){
-        args.append("-r");
-        args.append(QString::number(res));
-    }
-
-    renderer.process.setArguments(args);
-    renderer.process.start();
-    renderer.process.waitForStarted();
-}
-
-void MainWindow::logError(const QString & text) {
-    outputcon->setTextColor(Qt::red);
-    updateLog(text);
-    outputcon->setTextColor(Qt::black);
-}
-
-void MainWindow::updateLog(const QString &text){
-    outputcon->append(text);
 }
 
 void MainWindow::createActions()
@@ -261,11 +253,18 @@ void MainWindow::createActions()
     saveAct = new QAction(QIcon(":/images/save.png"), tr("&Save"), this);
     saveAct->setShortcut(tr("Ctrl+S"));
     saveAct->setStatusTip(tr("Save the document to disk"));
-    connect(saveAct, SIGNAL(triggered()), this, SLOT(save()));
+    connect(saveAct, &QAction::triggered, [=] { save(currentTab()); });
 
     saveAsAct = new QAction(tr("Save &As..."), this);
     saveAsAct->setStatusTip(tr("Save the document under a new name"));
     connect(saveAsAct, SIGNAL(triggered()), this, SLOT(saveAs()));
+
+    closeTabAct = new QAction(tr("Close Tab"), this);
+    closeTabAct->setShortcut(tr("Ctrl+W"));
+    closeTabAct->setStatusTip(
+        tr("Close the document in the currently active tab"));
+    connect(closeTabAct, &QAction::triggered,
+            [=](const int idx) { closeTab(currentTab()); });
 
     exitAct = new QAction(tr("E&xit"), this);
     exitAct->setShortcut(tr("Ctrl+Q"));
@@ -275,25 +274,25 @@ void MainWindow::createActions()
     prefAct = new QAction(tr("Preferences"), this);
     prefAct->setShortcut(tr("Ctrl+,"));
     prefAct->setStatusTip(tr("Open Preference Dialog"));
-    connect(prefAct, SIGNAL(triggered()), this, SLOT(openPreferences()));
+    connect(prefAct, &QAction::triggered, [this] { preferences->show(); });
 
     cutAct = new QAction(QIcon(":/images/cut.png"), tr("Cu&t"), this);
     cutAct->setShortcut(tr("Ctrl+X"));
     cutAct->setStatusTip(tr("Cut the current selection's contents to the "
                             "clipboard"));
-    connect(cutAct, SIGNAL(triggered()), textEdit, SLOT(cut()));
+    connect(cutAct, &QAction::triggered, [=] { currentTab()->cut(); });
 
     copyAct = new QAction(QIcon(":/images/copy.png"), tr("&Copy"), this);
     copyAct->setShortcut(tr("Ctrl+C"));
     copyAct->setStatusTip(tr("Copy the current selection's contents to the "
                              "clipboard"));
-    connect(copyAct, SIGNAL(triggered()), textEdit, SLOT(copy()));
+    connect(copyAct, &QAction::triggered, [=] { currentTab()->copy(); });
 
     pasteAct = new QAction(QIcon(":/images/paste.png"), tr("&Paste"), this);
     pasteAct->setShortcut(tr("Ctrl+V"));
     pasteAct->setStatusTip(tr("Paste the clipboard's contents into the current "
                               "selection"));
-    connect(pasteAct, SIGNAL(triggered()), textEdit, SLOT(paste()));
+    connect(pasteAct, &QAction::triggered, [=] { currentTab()->paste(); });
 
     aboutAct = new QAction(tr("&About"), this);
     aboutAct->setStatusTip(tr("Show the application's About box"));
@@ -305,21 +304,16 @@ void MainWindow::createActions()
 
     cutAct->setEnabled(false);
     copyAct->setEnabled(false);
-    connect(textEdit, SIGNAL(copyAvailable(bool)),
-            cutAct, SLOT(setEnabled(bool)));
-    connect(textEdit, SIGNAL(copyAvailable(bool)),
-            copyAct, SLOT(setEnabled(bool)));
 
     renderAct = new QAction(tr("Render"),this);
     renderAct->setShortcut(tr("F5"));
     renderAct->setStatusTip(tr("Render the script to an STL and display it"));
-    connect(renderAct, SIGNAL(triggered()),this,SLOT(render()));
+    connect(renderAct, &QAction::triggered, [=] { currentTab()->preview(); });
 
     exportAct = new QAction(tr("Render+Export"),this);
     exportAct->setShortcut(tr("F6"));
     exportAct->setStatusTip(tr("Render the script to a high resolution STL and display it"));
     connect(exportAct, SIGNAL(triggered()),this,SLOT(exportSTL()));
-
 }
 
 void MainWindow::createMenus()
@@ -332,6 +326,7 @@ void MainWindow::createMenus()
     fileMenu->addAction(renderAct);
     fileMenu->addAction(exportAct);
     fileMenu->addSeparator();
+    fileMenu->addAction(closeTabAct);
     fileMenu->addAction(exitAct);
 
     editMenu = menuBar()->addMenu(tr("&Edit"));
@@ -391,198 +386,3 @@ void MainWindow::writeSettings()
     settings.setValue("size", size());
 }
 
-bool MainWindow::maybeSave()
-{
-    if (textEdit->isModified()) {
-        int ret = QMessageBox::warning(this, tr("Application"),
-                     tr("The document has been modified.\n"
-                        "Do you want to save your changes?"),
-                     QMessageBox::Yes | QMessageBox::Default,
-                     QMessageBox::No,
-                     QMessageBox::Cancel | QMessageBox::Escape);
-        if (ret == QMessageBox::Yes)
-            return save();
-        else if (ret == QMessageBox::Cancel)
-            return false;
-    }
-    return true;
-}
-
-void MainWindow::loadFile(const QString &fileName)
-{
-    QFile file(fileName);
-    if (!file.open(QFile::ReadOnly)) {
-        QMessageBox::warning(this, tr("Application"),
-                             tr("Cannot read file %1:\n%2.")
-                             .arg(fileName)
-                             .arg(file.errorString()));
-        return;
-    }
-
-    QTextStream in(&file);
-    QApplication::setOverrideCursor(Qt::WaitCursor);
-    textEdit->setText(in.readAll());
-    QApplication::restoreOverrideCursor();
-
-    setCurrentFile(fileName);
-    statusBar()->showMessage(tr("File loaded"), 2000);
-}
-
-bool MainWindow::saveFile(const QString &fileName, bool setname)
-{
-    QFile file(fileName);
-    if (!file.open(QFile::WriteOnly)) {
-        QMessageBox::warning(this, tr("Application"),
-                             tr("Cannot write file %1:\n%2.")
-                             .arg(fileName)
-                             .arg(file.errorString()));
-        return false;
-    }
-
-    QTextStream out(&file);
-    QApplication::setOverrideCursor(Qt::WaitCursor);
-    out << textEdit->text();
-    QApplication::restoreOverrideCursor();
-
-    if (setname) {
-        setCurrentFile(fileName);
-        QSettings settings("ImplicitCAD", "ExplicitCAD");
-        if (settings.value("autorender", false).toBool()) {
-            render();
-        }
-    }
-    statusBar()->showMessage(tr("File saved"), 2000);
-
-    return true;
-}
-
-void MainWindow::setCurrentFile(const QString &fileName)
-{
-    curFile = fileName;
-    textEdit->setModified(false);
-    setWindowModified(false);
-
-    QString shownName;
-    if (curFile.isEmpty())
-        shownName = "untitled.txt";
-    else
-        shownName = strippedName(curFile);
-
-    setWindowTitle(tr("%1[*] - %2").arg(shownName).arg(tr("Application")));
-}
-
-QString MainWindow::strippedName(const QString &fullFileName)
-{
-    return QFileInfo(fullFileName).fileName();
-}
-
-
-void MainWindow::on_bad_stl()
-{
-    QMessageBox::critical(this, "Error",
-                          "<b>Error:</b><br>"
-                          "This <code>.stl</code> file is invalid or corrupted.<br>"
-                          "Please export it from the original source, verify, and retry.");
-}
-
-void MainWindow::on_empty_mesh()
-{
-    QMessageBox::critical(this, "Error",
-                          "<b>Error:</b><br>"
-                          "This file is syntactically correct<br>but contains no triangles.");
-}
-
-void MainWindow::on_confusing_stl()
-{
-    QMessageBox::warning(this, "Warning",
-                         "<b>Warning:</b><br>"
-                         "This <code>.stl</code> file begins with <code>solid </code>but appears to be a binary file.<br>"
-                         "<code>fstl</code> loaded it, but other programs may be confused by this file.");
-}
-
-void MainWindow::on_missing_file()
-{
-    QMessageBox::critical(this, "Error",
-                          "<b>Error:</b><br>"
-                          "The target file is missing.<br>");
-}
-
-void MainWindow::set_watched(const QString& filename)
-{
-    (&filename);
-    /*const auto files = watcher->files();
-    if (files.size())
-    {
-        watcher->removePaths(watcher->files());
-    }
-    watcher->addPath(filename);
-    */
-}
-
-
-void MainWindow::on_watched_change(const QString& filename)
-{
-
-        load_stl(filename, true);
-}
-
-void MainWindow::on_autoreload_triggered(bool b)
-{
-    if (b)
-    {
-        on_reload();
-    }
-}
-
-
-void MainWindow::on_reload()
-{
-    /*
-    auto fs = watcher->files();
-    if (fs.size() == 1)
-    {
-        load_stl(fs[0], true);
-    }
-    */
-}
-
-bool MainWindow::load_stl(const QString& filename, bool is_reload)
-{
-
-    //canvas->set_status("Loading " + filename);
-
-    Loader* loader = new Loader(this, filename, is_reload);
-
-    connect(loader, &Loader::got_mesh,
-            view, &ViewWidget::update_mesh);
-    connect(loader, &Loader::error_bad_stl,
-              this, &MainWindow::on_bad_stl);
-    connect(loader, &Loader::error_empty_mesh,
-              this, &MainWindow::on_empty_mesh);
-    connect(loader, &Loader::warning_confusing_stl,
-              this, &MainWindow::on_confusing_stl);
-    connect(loader, &Loader::error_missing_file,
-              this, &MainWindow::on_missing_file);
-
-    connect(loader, &Loader::finished,
-            loader, &Loader::deleteLater);
-    //connect(loader, &Loader::finished,
-    //          this, &Window::enable_open);
-    //connect(loader, &Loader::finished,
-    //        canvas, &Canvas::clear_status);
-
-    if (filename[0] != ':')
-    {
-        //connect(loader, &Loader::loaded_file,
-        //          this, &MainWindow::setWindowTitle);
-        connect(loader, &Loader::loaded_file,
-                  this, &MainWindow::set_watched);
-        //connect(loader, &Loader::loaded_file,
-          //        this, &MainWindow::on_loaded);
-        //autoreload_action->setEnabled(true);
-        //reload_action->setEnabled(true);
-    }
-
-    loader->start();
-    return true;
-}

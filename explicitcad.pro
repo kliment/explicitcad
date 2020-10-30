@@ -7,7 +7,7 @@ CONFIG      += qscintilla2
 #}
 
 HEADERS      = mainwindow.h backdrop.h glmesh.h mesh.h canvas.h loader.h preferences.h viewwidget.h
-SOURCES      = main.cpp mainwindow.cpp backdrop.cpp glmesh.cpp mesh.cpp loader.cpp canvas.cpp preferences.cpp viewwidget.cpp
+SOURCES      = main.cpp mainwindow.cpp backdrop.cpp glmesh.cpp mesh.cpp loader.cpp canvas.cpp preferences.cpp viewwidget.cpp tab.cpp
 RESOURCES    = explicitcad.qrc
 RESOURCES += gl/gl.qrc
 
