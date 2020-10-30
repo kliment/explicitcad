@@ -41,7 +41,7 @@ jobs:
 
     - name: Install QScintilla
       shell: bash
-      #if: (!startsWith(runner.os, 'Windows')) || steps.cache-qscintilla-windows.outputs.cache-hit == 'false'
+      if: (!startsWith(runner.os, 'Windows')) || steps.cache-qscintilla-windows.outputs.cache-hit == 'false'
       run: |
         if [[ $RUNNER_OS == "macOS" ]]; then
           brew install qscintilla2
