@@ -8,10 +8,10 @@
 #include "glmesh.h"
 #include "mesh.h"
 
-Canvas::Canvas(const QSurfaceFormat& format, QWidget *parent)
-    : QOpenGLWidget(parent), mesh(nullptr),
-      scale(1), zoom(1), tilt(90), yaw(0),
-      perspective(0.25), anim(this, "perspective"), status(" ")
+Canvas::Canvas(const QSurfaceFormat &format, QWidget *parent)
+    : QOpenGLWidget(parent), mesh(nullptr), scale(1), zoom(1), tilt(90), yaw(0),
+      perspective(0.25), mode(RenderMode::Solid), anim(this, "perspective"),
+      status(" ")
 {
 	setFormat(format);
     QFile styleFile(":/qt/style.qss");
@@ -47,12 +47,12 @@ void Canvas::view_perspective()
 
 void Canvas::draw_shaded()
 {
-    set_drawMode(0);
+    set_renderMode(RenderMode::Solid);
 }
 
 void Canvas::draw_wireframe()
 {
-    set_drawMode(1);
+    set_renderMode(RenderMode::Wireframe);
 }
 
 void Canvas::reset_cam()
@@ -128,9 +128,9 @@ void Canvas::set_perspective(float p)
     update();
 }
 
-void Canvas::set_drawMode(int mode)
+void Canvas::set_renderMode(const enum RenderMode mode)
 {
-    drawMode = mode;
+    this->mode = mode;
     update();
 }
 
@@ -175,15 +175,15 @@ void Canvas::draw_mesh()
 {
     QOpenGLShaderProgram* selected_mesh_shader = NULL;
     // Set gl draw mode
-    if(drawMode == 1)
-    {
+    switch (mode) {
+    case RenderMode::Wireframe:
         selected_mesh_shader = &mesh_wireframe_shader;
         glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-    }
-    else
-    {
+        break;
+    case RenderMode::Solid:
         selected_mesh_shader = &mesh_shader;
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+        break;
     }
 
     selected_mesh_shader->bind();

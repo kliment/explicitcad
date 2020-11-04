@@ -22,6 +22,7 @@ public:
     void draw_shaded();
     void draw_wireframe();
 
+    enum class RenderMode { Solid, Wireframe };
     enum class Direction { Front, Back, Top, Bottom, Left, Right };
 
 public slots:
@@ -42,7 +43,7 @@ protected:
     void wheelEvent(QWheelEvent* event) override;
     
 	void set_perspective(float p);
-    void set_drawMode(int mode);
+    void set_renderMode(const enum RenderMode);
     void view_anim(float v);
 
 private:
@@ -67,7 +68,7 @@ private:
     float meshScale;
 
     float perspective;
-    int drawMode;
+    enum RenderMode mode;
     Q_PROPERTY(float perspective MEMBER perspective WRITE set_perspective);
     QPropertyAnimation anim;
 
