@@ -10,6 +10,8 @@
 #include <Qsci/qscilexercpp.h>
 #include <Qsci/qscilexer.h>
 
+#include <cmath>
+
 #include "loader.h"
 #include "tab.h"
 #include "canvas.h"
@@ -44,6 +46,11 @@ Tab::Tab(QWidget *parent)
 
     connect(code, &QsciScintilla::copyAvailable,
             [=](const bool available) { emit copyAvailable(available); });
+    connect(code, &QsciScintilla::linesChanged, [=] {
+        const auto lines = code->lines();
+        const auto digits = std::floor(std::log10(lines) + 1);
+        code->setMarginWidth(1, QString("0").repeated(digits+1));
+    });
 
     toolbar->addAction(tr("Orthographic"),
                        [=] { canvas->view_orthographic(); });
