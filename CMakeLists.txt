@@ -14,7 +14,7 @@ find_package(Threads REQUIRED)
 set(SRCS main.cpp mainwindow.cpp backdrop.cpp glmesh.cpp mesh.cpp loader.cpp canvas.cpp preferences.cpp viewwidget.cpp)
 set(RESOURCES explicitcad.qrc gl/gl.qrc)
 
-add_executable(${PROJECT_NAME} ${SRCS} ${RESOURCES})
+add_executable(${PROJECT_NAME} MACOSX_BUNDLE ${SRCS} ${RESOURCES})
 target_link_libraries(${PROJECT_NAME} Qt5::Core Qt5::Gui Qt5::Widgets Qt5::OpenGL QScintilla::QScintilla OpenGL::GL Threads::Threads)
 
 install(TARGETS ${PROJECT_NAME}
