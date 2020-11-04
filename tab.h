@@ -12,6 +12,7 @@ class QTextEdit;
 class ViewWidget;
 class QSplitter;
 class QsciLexer;
+class Canvas;
 
 class Tab : public QWidget
 {
@@ -23,7 +24,8 @@ class Tab : public QWidget
   private:
     QsciScintilla *code;
     QsciLexer *lexer;
-    ViewWidget *view;
+    Canvas *canvas;
+    QToolBar *toolbar;
     QTextEdit *console;
     QSplitter *v_splitter;
     QSplitter *h_splitter;

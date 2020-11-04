@@ -5,17 +5,30 @@
 #include <QSplitter>
 #include <QTextEdit>
 #include <QVBoxLayout>
+#include <QToolBar>
 
 #include <Qsci/qscilexercpp.h>
 #include <Qsci/qscilexer.h>
 
 #include "loader.h"
 #include "tab.h"
-#include "viewwidget.h"
+#include "canvas.h"
 
 Tab::Tab(QWidget *parent)
     : QWidget(parent), code(new QsciScintilla()), lexer(new QsciLexerCPP()),
-      view(new ViewWidget()), console(new QTextEdit()),
+      canvas(new Canvas(
+          [] {
+              QSurfaceFormat format;
+              format.setDepthBufferSize(24);
+              format.setStencilBufferSize(8);
+              format.setVersion(2, 1);
+              format.setProfile(QSurfaceFormat::CoreProfile);
+
+              QSurfaceFormat::setDefaultFormat(format);
+              return format;
+          }(),
+          this)),
+      toolbar(new QToolBar(this)), console(new QTextEdit()),
       v_splitter(new QSplitter()), h_splitter(new QSplitter())
 {
 
@@ -32,11 +45,37 @@ Tab::Tab(QWidget *parent)
     connect(code, &QsciScintilla::copyAvailable,
             [=](const bool available) { emit copyAvailable(available); });
 
+    toolbar->addAction(tr("Orthographic"),
+                       [=] { canvas->view_orthographic(); });
+    toolbar->addAction(tr("Perspective"), [=] { canvas->view_perspective(); });
+    toolbar->addAction(tr("Reset Cam"), canvas, &Canvas::reset_cam);
+
+    toolbar->addAction(
+        tr("Front"), [=] { canvas->setCameraAngle(Canvas::Direction::Front); });
+    toolbar->addAction(
+        tr("Back"), [=] { canvas->setCameraAngle(Canvas::Direction::Back); });
+    toolbar->addAction(tr("Top"),
+                       [=] { canvas->setCameraAngle(Canvas::Direction::Top); });
+    toolbar->addAction(tr("Bottom"), [=] {
+        canvas->setCameraAngle(Canvas::Direction::Bottom);
+    });
+    toolbar->addAction(
+        tr("Left"), [=] { canvas->setCameraAngle(Canvas::Direction::Left); });
+    toolbar->addAction(
+        tr("Right"), [=] { canvas->setCameraAngle(Canvas::Direction::Right); });
+
+    auto preview_and_controls = new QWidget();
+    auto preview_layout = new QVBoxLayout();
+    preview_layout->setContentsMargins(0, 0, 0, 0);
+    preview_layout->addWidget(canvas);
+    preview_layout->addWidget(toolbar);
+    preview_and_controls->setLayout(preview_layout);
+
     console->setReadOnly(true);
     console->setAcceptRichText(true);
 
     v_splitter->setOrientation(Qt::Vertical);
-    v_splitter->addWidget(view);
+    v_splitter->addWidget(preview_and_controls);
     v_splitter->addWidget(console);
     v_splitter->setSizes({200, 200});
     h_splitter->addWidget(code);
@@ -159,7 +198,7 @@ void Tab::load_stl(const QString &fileName, const bool reload)
     Loader* loader = new Loader(this, fileName, reload);
 
     connect(loader, &Loader::got_mesh,
-            view, &ViewWidget::update_mesh);
+            canvas, &Canvas::load_mesh);
 //
 //    QMessageBox::critical(this, "Error",
 
