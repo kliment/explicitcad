@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.1 FATAL_ERROR)
 
+cmake_policy(SET CMP0072 NEW)
+
 project(ExplicitCAD)
 
 SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake")
