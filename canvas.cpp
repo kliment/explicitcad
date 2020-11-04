@@ -168,6 +168,7 @@ void Canvas::paintGL()
 
 	QPainter painter(this);
 	painter.setRenderHint(QPainter::Antialiasing);
+	painter.setPen(Qt::white);
 	painter.drawText(10, height() - 10, status);
 }
 

@@ -108,6 +108,7 @@ Tab::Tab(QWidget *parent)
                 } else {
                     logError("Rendering failed.");
                 }
+                canvas->set_status("");
             });
 
     setFocusPolicy(Qt::StrongFocus);
@@ -296,6 +297,7 @@ void Tab::preview(const float res) {
         return;
     }
 
+    canvas->set_status("Rendering preview …");
     call_implicitcad(tempfilename, stl.fileName());
 }
 
