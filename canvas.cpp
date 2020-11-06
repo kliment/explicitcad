@@ -151,6 +151,46 @@ void Canvas::initializeGL()
     mesh_wireframe_shader.addShaderFromSourceFile(QOpenGLShader::Fragment, ":/gl/mesh_wireframe.frag");
     mesh_wireframe_shader.link();
 
+    small_axes_shader.addShaderFromSourceFile(QOpenGLShader::Vertex,
+                                              ":/gl/small_axes.vert");
+    small_axes_shader.addShaderFromSourceFile(QOpenGLShader::Fragment,
+                                              ":/gl/small_axes.frag");
+    small_axes_shader.link();
+    small_axes_shader.bind();
+
+    small_axes_vao.create();
+    small_axes_vao.bind();
+
+    /* format: R, G, B, x, y, z; 6 times */
+    float colors_and_vertices[] = {
+        1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
+        0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f,
+        0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f,
+    };
+
+    /* stride is in bytes */
+    const auto stride = 6 * sizeof(GL_FLOAT);
+    const auto colorOffset = 0;
+    const auto vertexOffset = 3 * sizeof(GL_FLOAT);
+
+    small_axes_vertices.create();
+    small_axes_vertices.bind();
+    small_axes_vertices.setUsagePattern(QOpenGLBuffer::StaticDraw);
+    small_axes_vertices.allocate(colors_and_vertices,
+                                 sizeof(colors_and_vertices));
+    small_axes_shader.enableAttributeArray("vertex_position");
+    small_axes_shader.setAttributeBuffer("vertex_position", GL_FLOAT,
+                                         vertexOffset, 3, stride);
+
+    small_axes_shader.enableAttributeArray("vertex_color");
+    small_axes_shader.setAttributeBuffer("vertex_color", GL_FLOAT, colorOffset,
+                                         3, stride);
+
+    small_axes_vertices.release();
+    small_axes_vao.release();
+    small_axes_shader.release();
+
+
     backdrop = new Backdrop();
 }
 
@@ -163,6 +203,8 @@ void Canvas::paintGL()
 
 	backdrop->draw();
 	if (mesh)  draw_mesh();
+
+	draw_small_axes();
 
 	if (status.isNull())  return;
 
@@ -213,6 +255,43 @@ void Canvas::draw_mesh()
     // Clean up state machine
     glDisableVertexAttribArray(vp);
     selected_mesh_shader->release();
+}
+
+void Canvas::draw_small_axes()
+{
+    // orthographic projection via view_matrix
+    const float dpi = 1.0f;
+    const float aspectratio = (width() * 1.0f) / height();
+    auto scale = 9.0f;
+
+    QMatrix4x4 projection;
+    QMatrix4x4 view;
+    projection.translate(-0.8f, -0.8f, 0.0f);
+    projection.ortho(-scale * dpi * aspectratio, scale * dpi * aspectratio,
+                     -scale * dpi, scale * dpi, -scale * dpi, scale * dpi);
+    const auto model = [this] {
+        QMatrix4x4 m;
+        m.rotate(-tilt, QVector3D(1, 0, 0));
+        m.rotate(-yaw, QVector3D(0, 0, 1));
+        return m;
+    }();
+
+    small_axes_shader.bind();
+    small_axes_vao.bind();
+
+    QMatrix4x4 identity;
+    glUniformMatrix4fv(small_axes_shader.uniformLocation("model_matrix"),
+                       1, GL_FALSE, model.data());
+    glUniformMatrix4fv(small_axes_shader.uniformLocation("view_matrix"), 1,
+                       GL_FALSE, view.data());
+    glUniformMatrix4fv(small_axes_shader.uniformLocation("projection_matrix"),
+                       1, GL_FALSE, projection.data());
+
+    glDrawArrays(GL_LINES, 0, 6);
+
+    small_axes_shader.release();
+    small_axes_vao.release();
+
 }
 
 QMatrix4x4 Canvas::transform_matrix() const

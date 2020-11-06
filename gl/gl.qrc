@@ -6,6 +6,8 @@
         <file>quad.frag</file>
         <file>quad.vert</file>
         <file>sphere.stl</file>
+        <file>small_axes.frag</file>
+        <file>small_axes.vert</file>
     </qresource>
     <qresource prefix="/">
         <file>testfile.stl</file>

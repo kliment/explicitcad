@@ -48,6 +48,7 @@ protected:
 
 private:
     void draw_mesh();
+    void draw_small_axes();
 
     QMatrix4x4 transform_matrix() const;
     QMatrix4x4 view_matrix() const;
@@ -55,6 +56,10 @@ private:
     QOpenGLShaderProgram mesh_shader;
     QOpenGLShaderProgram mesh_wireframe_shader;
 	QOpenGLShaderProgram quad_shader;
+
+    QOpenGLShaderProgram small_axes_shader;
+    QOpenGLVertexArrayObject small_axes_vao;
+    QOpenGLBuffer small_axes_vertices;
 
     GLMesh* mesh;
     Backdrop* backdrop;
