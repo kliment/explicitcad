@@ -1,6 +1,6 @@
 QT += core gui opengl widgets
-CONFIG      += qscintilla2
-
+CONFIG += qscintilla2
+CONFIG += c++14
 
 #macx {
 #    QMAKE_POST_LINK = install_name_tool -change libqscintilla2_qt$${QT_MAJOR_VERSION}.13.dylib $$[QT_INSTALL_LIBS]/libqscintilla2_qt$${QT_MAJOR_VERSION}.13.dylib $(TARGET)
@@ -12,4 +12,8 @@ RESOURCES    = explicitcad.qrc
 RESOURCES += gl/gl.qrc
 
 
-CONFIG += c++14
+isEmpty(PREFIX) {
+  PREFIX = /usr/local
+}
+target.path = $$PREFIX/bin/
+INSTALLS += target
