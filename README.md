@@ -1,3 +1,7 @@
+# ExplicitCAD
+
+[![IRC](https://img.shields.io/badge/irc.freenode.net-%23ImplicitCAD-blue.svg)](https://freenode.net/)
+
 ExplicitCAD is a minimal graphical user interface for [ImplicitCAD](https://github.com/colah/ImplicitCAD). 
 
 It has a text editor, an output log, and a 3D viewer. 2D output is not currently supported.
